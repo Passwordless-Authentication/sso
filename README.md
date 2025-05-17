@@ -1,2 +1,2 @@
 # sso
-The sso customization for the passwordless authentication project using Keycloak
+The SSO customization for the Passwordless Authentication project using Keycloak.

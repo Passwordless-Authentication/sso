@@ -1,1 +1,2 @@
 dev.iliya.passwordless.auth.keycloak.PasswordlessFormAuthenticatorFactory
+dev.iliya.passwordless.auth.keycloak.ConfigurePasswordlessAuthenticator

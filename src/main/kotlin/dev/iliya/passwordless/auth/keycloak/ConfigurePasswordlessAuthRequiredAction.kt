@@ -44,13 +44,13 @@ class ConfigurePasswordlessAuthRequiredAction : RequiredActionProvider, Required
     override fun processAction(context: RequiredActionContext) {
         val requestParams = context.httpRequest.decodedFormParameters
         val passwordlessStatus = requestParams.getFirst(PASSWORDLESS_AUTH_STATUS_ATTRIBUTE)
-        require(passwordlessStatus != null) { "Passwordless Authentication status should be set" }
+        requireNotNull(passwordlessStatus) { "Passwordless Authentication status should be set" }
 
         val user = context.user
         if (passwordlessStatus == PASSWORDLESS_AUTH_ENABLE_BUTTON_LABEL_VALUE.lowercase()) {
-            user.passwordlessAuthenticationEnabled = true
+            user.configurePasswordlessAuthentication(enabled = true)
         } else if (passwordlessStatus == PASSWORDLESS_AUTH_DISABLE_BUTTON_LABEL_VALUE.lowercase()) {
-            user.passwordlessAuthenticationEnabled = false
+            user.configurePasswordlessAuthentication(enabled = false)
         }
 
         user.removeRequiredAction(PROVIDER_ID)

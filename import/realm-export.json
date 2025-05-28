@@ -1810,24 +1810,6 @@
       ]
     },
     {
-      "id": "f08b26fd-c475-4272-8c99-acb90bc0ec3e",
-      "alias": "Authenticator app browser flow",
-      "description": "Passwordless browser based authentication",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticatorFlow": true,
-          "requirement": "REQUIRED",
-          "priority": 0,
-          "autheticatorFlow": true,
-          "flowAlias": "Authenticator app browser flow browser flow forms",
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
       "id": "5c75ab98-f5df-4d95-b949-5f1d3f8ed99c",
       "alias": "Authenticator app browser flow authentication flow",
       "description": "",
@@ -1871,6 +1853,32 @@
         },
         {
           "authenticator": "configure-passwordless-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 1,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "c53ce9ed-1c06-498d-8b73-794dc7613a07",
+      "alias": "Authenticator app browser flow conditional OTP flow",
+      "description": "",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 1,
@@ -1937,6 +1945,14 @@
           "requirement": "REQUIRED",
           "priority": 0,
           "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 1,
+          "autheticatorFlow": true,
+          "flowAlias": "Authenticator app browser flow conditional OTP flow",
           "userSetupAllowed": false
         }
       ]
@@ -2290,6 +2306,24 @@
       ]
     },
     {
+      "id": "f08b26fd-c475-4272-8c99-acb90bc0ec3e",
+      "alias": "authenticator app browser flow",
+      "description": "Passwordless browser based authentication",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorFlow": true,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "autheticatorFlow": true,
+          "flowAlias": "Authenticator app browser flow browser flow forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
       "id": "8aeebe07-ae6b-4571-bc4b-c778f0affcf7",
       "alias": "browser",
       "description": "Browser based authentication",
@@ -2394,6 +2428,32 @@
           "authenticatorFlow": false,
           "requirement": "ALTERNATIVE",
           "priority": 40,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "c56b81ce-dea3-4289-b565-1c80b7b93958",
+      "alias": "conditional OTP flow",
+      "description": "",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 1,
           "autheticatorFlow": false,
           "userSetupAllowed": false
         }
@@ -2570,6 +2630,14 @@
           "requirement": "REQUIRED",
           "priority": 0,
           "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 1,
+          "autheticatorFlow": true,
+          "flowAlias": "conditional OTP flow",
           "userSetupAllowed": false
         }
       ]

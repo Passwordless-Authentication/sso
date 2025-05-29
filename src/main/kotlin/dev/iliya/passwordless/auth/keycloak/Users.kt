@@ -10,6 +10,7 @@ import kotlin.random.Random
 
 private object Attributes {
     const val PASSWORDLESS_AUTHENTICATION_ENABLED = "passwordlessAuthenticationEnabled"
+    const val PASSWORDLESS_AUTHENTICATION_CHALLENGE_VERIFIED = "passwordlessAuthenticationChallengeVerified"
 }
 
 private object KeycloakOTP {
@@ -20,8 +21,8 @@ private object KeycloakOTP {
     const val ALGORITHM = HmacOTP.DEFAULT_ALGORITHM
 }
 
-class ResponseOption(
-    val data: String,
+data class ResponseOption(
+    val data: Int,
     val isChallengeResponse: Boolean,
 ) {
     companion object {
@@ -52,33 +53,62 @@ private fun UserModel.getOTPCredentialModel(): OTPCredentialModel? {
     val name = KeycloakOTP.NAME
     val type = KeycloakOTP.TYPE
     val credentialModel = this.credentialManager().getStoredCredentialByNameAndType(name, type)
-    return credentialModel?.let { OTPCredentialModel.createFromCredentialModel(it) }
+    val otpCredentialModel = credentialModel?.let { OTPCredentialModel.createFromCredentialModel(it) }
+    otpCredentialModel?.type = KeycloakOTP.TYPE
+    return otpCredentialModel
 }
 
-private fun HmacOTP.generateChallengeNumber(secretData: OTPSecretData, credentialData: OTPCredentialData): String {
-    return this.generateHOTP(secretData.value, credentialData.counter)
+private fun HmacOTP.generateChallengeNumber(secretData: OTPSecretData, credentialData: OTPCredentialData): Int {
+    val rawHOTP = this.generateHOTP(secretData.value, credentialData.counter).toInt()
+
+    // to make sure the generated response is always a 2-digit number
+    return (rawHOTP % 90) + 10
+}
+
+private fun OTPCredentialModel.createHOTP(): HmacOTP {
+    val credentialData = this.otpCredentialData
+    return HmacOTP(credentialData.digits, credentialData.algorithm, TimeBasedOTP.DEFAULT_DELAY_WINDOW)
+}
+
+private fun OTPCredentialModel.incrementCounter() {
+    this.updateCounter(this.otpCredentialData.counter + 1)
 }
 
 private fun OTPCredentialModel.generateResponseOptions(): List<ResponseOption> {
     val secretData = this.otpSecretData
     val credentialData = this.otpCredentialData
-    val hmacOTP = HmacOTP(credentialData.digits, credentialData.algorithm, TimeBasedOTP.DEFAULT_DELAY_WINDOW)
+    val hmacOTP = this.createHOTP()
     val responseOptions = List(ResponseOption.SIZE) { index ->
+        this.incrementCounter()
         val challengeNumber = hmacOTP.generateChallengeNumber(secretData, credentialData)
-        this.updateCounter(credentialData.counter + 1)
         return@List ResponseOption(challengeNumber, index == ResponseOption.SIZE - 1)
+    }
+    check(responseOptions.filter { it.isChallengeResponse }.size == 1) {
+        "There should be only one challenge number among response options"
     }
     check(responseOptions.last().isChallengeResponse)
     return responseOptions
 }
 
-fun UserModel.generateResponseOptions(): List<ResponseOption> {
+fun UserModel.generateNumberMatchingResponseOptions(): List<ResponseOption> {
     check(passwordlessNumberMatchingConfigured)
+    this.removeAttribute(Attributes.PASSWORDLESS_AUTHENTICATION_CHALLENGE_VERIFIED)
     val otpCredentialModel = this.getOTPCredentialModel()
-    checkNotNull(otpCredentialModel)
-    val responseOptions = otpCredentialModel.generateResponseOptions()
+    val responseOptions = otpCredentialModel!!.generateResponseOptions()
     this.credentialManager().updateStoredCredential(otpCredentialModel)
     return responseOptions
+}
+
+fun UserModel.verifyChallengeResponse(response: Int): Boolean {
+    val otpCredentialModel = this.getOTPCredentialModel()
+    checkNotNull(otpCredentialModel)
+    val hmacOTP = otpCredentialModel.createHOTP()
+    val challenge =
+        hmacOTP.generateChallengeNumber(otpCredentialModel.otpSecretData, otpCredentialModel.otpCredentialData)
+    val verified = challenge == response
+    otpCredentialModel.incrementCounter()
+    this.passwordlessAuthenticationChallengeVerified = verified
+    return verified
 }
 
 fun UserModel.configurePasswordlessAuthentication(enabled: Boolean) {
@@ -92,3 +122,7 @@ private val UserModel.passwordlessNumberMatchingConfigured: Boolean
 var UserModel.passwordlessAuthenticationEnabled: Boolean
     get() = this.getCustomAttribute(Attributes.PASSWORDLESS_AUTHENTICATION_ENABLED, false).toBoolean()
     private set(value) = this.setCustomAttribute(Attributes.PASSWORDLESS_AUTHENTICATION_ENABLED, value)
+
+var UserModel.passwordlessAuthenticationChallengeVerified: Boolean?
+    get() = this.getCustomAttribute(Attributes.PASSWORDLESS_AUTHENTICATION_CHALLENGE_VERIFIED)?.toBoolean()
+    private set(value) = this.setCustomAttribute(Attributes.PASSWORDLESS_AUTHENTICATION_CHALLENGE_VERIFIED, value)

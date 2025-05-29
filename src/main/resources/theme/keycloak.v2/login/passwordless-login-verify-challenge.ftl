@@ -40,5 +40,11 @@
         </div>
 
         <div>Select this number in the sign-in request on your mobile device</div>
+        <div>
+            Didn't receive the notification?
+            <form action="${url.loginAction}" method="post">
+                <button name=resend value="true">resend</button>
+            </form>
+        </div>
     </#if>
 </@layout.registrationLayout>

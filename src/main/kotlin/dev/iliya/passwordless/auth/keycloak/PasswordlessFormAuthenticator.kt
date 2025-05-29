@@ -43,6 +43,12 @@ class PasswordlessFormAuthenticator : AbstractUsernameFormAuthenticator(), Authe
 
     override fun action(context: AuthenticationFlowContext) {
         if (context.authenticationSession.authNotificationSent) {
+            val resend = context.httpRequest.decodedFormParameters.getFirst("resend").toBoolean()
+            if (resend) {
+                context.challenge(sendVerifyNotification(context))
+                return
+            }
+
             context.challenge(createVerifyChallengeForm(context))
             return
         }

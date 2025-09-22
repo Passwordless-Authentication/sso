@@ -1,5 +1,7 @@
 package dev.iliya.passwordless.auth.keycloak
 
+import jakarta.ws.rs.core.HttpHeaders
+import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.keycloak.authentication.AuthenticationFlowContext
 import org.keycloak.authentication.AuthenticationFlowError
@@ -10,12 +12,19 @@ import org.keycloak.models.KeycloakSession
 import org.keycloak.models.RealmModel
 import org.keycloak.models.UserModel
 import org.keycloak.sessions.AuthenticationSessionModel
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpRequest.BodyPublishers
+import java.net.http.HttpResponse
 
 class PasswordlessFormAuthenticator : AbstractUsernameFormAuthenticator(), Authenticator {
     private companion object {
+        private val httpClient: HttpClient = HttpClient.newBuilder().build()
         const val SEND_NOTIFICATION_TEMPLATE = "passwordless-login-send-notification.ftl"
         const val VERIFY_CHALLENGE_TEMPLATE = "passwordless-login-verify-challenge.ftl"
         const val CHALLENGE_RESPONSE_ATTRIBUTE = "challengeResponse"
+        const val AUTHENTICATOR_WS_URL_ATTRIBUTE = "wsUrl"
         const val NOTIFICATION_SENT_NOTE_KEY = "notificationSent"
     }
 
@@ -67,22 +76,34 @@ class PasswordlessFormAuthenticator : AbstractUsernameFormAuthenticator(), Authe
     private fun createVerifyChallengeForm(context: AuthenticationFlowContext): Response {
         val form = context.form()
         form.setChallengeResponseFormAttribute(context.authenticationSession.challengeResponse)
+        form.setAuthenticatorWsUrl(ClientConfiguration.wsUrl)
         return form.createForm(VERIFY_CHALLENGE_TEMPLATE)
     }
 
     private fun sendVerifyNotification(context: AuthenticationFlowContext): Response {
         val responseOptions = context.user.generateNumberMatchingResponseOptions()
         val challengeResponse = responseOptions.first { it.isChallengeResponse }
-        // TODO: send the notification
+        sendResponseOptionsMessage(context.user, responseOptions)
         context.authenticationSession.authNotificationSent = true
         context.authenticationSession.challengeResponse = challengeResponse.data
-        val form = context.form()
-        form.setChallengeResponseFormAttribute(challengeResponse.data)
         return createVerifyChallengeForm(context)
     }
 
+    private fun sendResponseOptionsMessage(user: UserModel, responseOptions: List<ResponseOption>) {
+        val body = ResponseOptionsMessage(
+            username = user.username,
+            responseOptions = responseOptions.map { it.data }
+        )
+        val httpRequest = HttpRequest.newBuilder()
+            .uri(ClientConfiguration.responseOptionsUrl)
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .POST(BodyPublishers.ofString(body.toString()))
+            .build()
+        httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
+    }
+
     private var AuthenticationSessionModel.authNotificationSent: Boolean
-        get() = this.getAuthNote(NOTIFICATION_SENT_NOTE_KEY)?.toBoolean() == true
+        get() = this.getAuthNote(NOTIFICATION_SENT_NOTE_KEY).toBoolean()
         set(value) {
             this.setAuthNote(NOTIFICATION_SENT_NOTE_KEY, value.toString())
         }
@@ -97,6 +118,10 @@ class PasswordlessFormAuthenticator : AbstractUsernameFormAuthenticator(), Authe
         this.setAttribute(CHALLENGE_RESPONSE_ATTRIBUTE, challengeResponse)
     }
 
+    private fun LoginFormsProvider.setAuthenticatorWsUrl(url: URI) {
+        this.setAttribute(AUTHENTICATOR_WS_URL_ATTRIBUTE, url.toString())
+    }
+
     override fun requiresUser(): Boolean = true
 
     override fun close() {
@@ -106,4 +131,9 @@ class PasswordlessFormAuthenticator : AbstractUsernameFormAuthenticator(), Authe
     override fun setRequiredActions(session: KeycloakSession?, realm: RealmModel?, user: UserModel?) {
         // no-op
     }
+
+    private data class ResponseOptionsMessage(
+        val username: String,
+        val responseOptions: List<Int>
+    )
 }

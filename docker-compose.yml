@@ -1,0 +1,48 @@
+name: passwordless-auth
+services:
+  db:
+    image: postgres:17
+    container_name: passwordless-auth-kc-db
+    hostname: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: keycloak
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - passwordless-auth
+  sso:
+    build: .
+    container_name: passwordless-auth-keycloak
+    restart: unless-stopped
+    ports:
+      - "443:8443"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USERNAME}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HOSTNAME: sso.iliya.dev
+      KC_HOSTNAME_ADMIN: admin.sso.iliya.dev
+    depends_on:
+      db:
+        required: true
+        condition: service_healthy
+    command: start --optimized
+    networks:
+      - passwordless-auth
+volumes:
+  db-data:
+    name: passwordless-auth-db-data
+networks:
+  passwordless-auth:
+    name: passwordless-auth-network

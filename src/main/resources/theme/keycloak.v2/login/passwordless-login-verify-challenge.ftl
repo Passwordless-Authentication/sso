@@ -6,7 +6,8 @@
         <script type="text/javascript">
             window.addEventListener('load', () => {
                 const stompClient = new StompJs.Client({
-                    brokerURL: 'ws://localhost:5000/passwordless'
+                    // brokerURL: 'ws://localhost:5000/passwordless'
+                    brokerURL: ${wsUrl}
                 });
 
                 stompClient.onConnect = (frame) => {
